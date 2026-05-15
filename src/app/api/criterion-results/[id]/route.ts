@@ -9,9 +9,9 @@ interface RouteParams {
 const bodySchema = z
   .object({
     teacher_score: z.number().min(0).max(40).nullable().optional(),
-    evidence: z.string().max(5000).nullable().optional(),
-    problem: z.string().max(5000).nullable().optional(),
-    recommendation: z.string().max(5000).nullable().optional(),
+    evidence: z.string().max(20000).nullable().optional(),
+    problem: z.string().max(20000).nullable().optional(),
+    recommendation: z.string().max(20000).nullable().optional(),
   })
   .refine(
     (v) =>

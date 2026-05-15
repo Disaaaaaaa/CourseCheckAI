@@ -14,6 +14,7 @@ import {
 } from "@/lib/rubric";
 import { firstOf, formatDate } from "@/lib/utils";
 import { buildLrfDocx, LRF_SECTION_PREFIX } from "@/lib/exports/lrf";
+import { cleanText } from "@/lib/exports/sanitize";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -53,7 +54,23 @@ interface SectionAnalysisJson {
 }
 
 export async function POST(req: Request, { params }: RouteParams) {
-  const { id } = await params;
+  try {
+    return await handleExport(req, await params);
+  } catch (e) {
+    console.error("[export] unexpected error:", e);
+    return NextResponse.json(
+      {
+        error:
+          e instanceof Error
+            ? `Экспорт қатесі: ${e.message}`
+            : "Файл жасалмады. Қайталап көріңіз.",
+      },
+      { status: 500 },
+    );
+  }
+}
+
+async function handleExport(req: Request, { id }: { id: string }) {
   const url = new URL(req.url);
   const type = (url.searchParams.get("type") ?? "excel").toLowerCase();
   if (type !== "excel" && type !== "lrf") {
@@ -167,15 +184,15 @@ export async function POST(req: Request, { params }: RouteParams) {
   const summary = workbook.addWorksheet("Қорытынды");
   summary.columns = [{ width: 34 }, { width: 70 }];
   summary.addRows([
-    ["Оқушы", submission.student_full_name],
-    ["Сынып", submission.class_name],
-    ["Тақырып", submission.coursework_title],
-    ["PDF файл", submission.pdf_file_name],
+    ["Оқушы", cleanText(submission.student_full_name)],
+    ["Сынып", cleanText(submission.class_name)],
+    ["Тақырып", cleanText(submission.coursework_title)],
+    ["PDF файл", cleanText(submission.pdf_file_name)],
     ["Жүктелген", formatDate(submission.created_at)],
     [
       "Сөз саны",
       raw?.submission_summary?.detected_word_count != null
-        ? `${raw.submission_summary.detected_word_count} (${raw.submission_summary.target_word_count_status ?? "—"})`
+        ? `${raw.submission_summary.detected_word_count} (${cleanText(raw.submission_summary.target_word_count_status) || "—"})`
         : "—",
     ],
     [],
@@ -185,7 +202,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     ["AI БМ3 (Стиль)", `${aiReview?.bm3_score ?? 0} / ${BM3_MAX}`],
     [
       "Академиялық тәуекел",
-      String(aiReview?.academic_integrity_risk ?? "—"),
+      cleanText(aiReview?.academic_integrity_risk) || "—",
     ],
     [],
     [
@@ -213,18 +230,15 @@ export async function POST(req: Request, { params }: RouteParams) {
         : "—",
     ],
     [],
-    ["AI жалпы пікір", aiReview?.summary ?? ""],
-    [
-      "Құрылым",
-      raw?.submission_summary?.structural_completeness ?? "",
-    ],
+    ["AI жалпы пікір", cleanText(aiReview?.summary)],
+    ["Құрылым", cleanText(raw?.submission_summary?.structural_completeness)],
     [],
-    ["Күшті жағы", finalReview?.strengths ?? ""],
-    ["Толықтыру қажет", finalReview?.needs_improvement ?? ""],
-    ["Келесі редакция", finalReview?.next_revision ?? ""],
+    ["Күшті жағы", cleanText(finalReview?.strengths)],
+    ["Толықтыру қажет", cleanText(finalReview?.needs_improvement)],
+    ["Келесі редакция", cleanText(finalReview?.next_revision)],
     [
       "Мұғалім аннотациясы",
-      finalReview?.final_comment ?? aiReview?.teacher_annotation ?? "",
+      cleanText(finalReview?.final_comment ?? aiReview?.teacher_annotation),
     ],
   ]);
   summary.getColumn(1).font = { bold: true };
@@ -254,6 +268,9 @@ export async function POST(req: Request, { params }: RouteParams) {
       ai_score?: number | string;
       teacher_score?: number | string | null;
       confidence?: string;
+      evidence?: string | null;
+      problem?: string | null;
+      recommendation?: string | null;
     }>).find((c) => c.criterion_code === rubric.code);
     criteriaSheet.addRow({
       code: rubric.code,
@@ -261,17 +278,52 @@ export async function POST(req: Request, { params }: RouteParams) {
       max: rubric.maxScore,
       ai: db?.ai_score ?? ai?.suggested_score ?? "",
       teacher: db?.teacher_score ?? "",
-      band: ai?.level_band ?? "",
-      conf: ai?.confidence ?? db?.confidence ?? "",
+      band: cleanText(ai?.level_band),
+      conf: cleanText(ai?.confidence ?? db?.confidence),
       band_desc: ai?.level_band
-        ? rubric.bandDescriptors[ai.level_band]
+        ? cleanText(rubric.bandDescriptors[ai.level_band])
         : "",
-      band_match: ai?.band_match_explanation ?? "",
-      strengths: (ai?.strengths ?? []).map((s) => `• ${s}`).join("\n"),
-      weaknesses: (ai?.weaknesses ?? []).map((s) => `• ${s}`).join("\n"),
+      band_match: cleanText(ai?.band_match_explanation),
+      strengths: cleanText(
+        (ai?.strengths ?? []).map((s) => `• ${s}`).join("\n"),
+      ),
+      weaknesses: cleanText(
+        (ai?.weaknesses ?? []).map((s) => `• ${s}`).join("\n"),
+      ),
     });
   }
   criteriaSheet.eachRow(
+    (row) => (row.alignment = { wrapText: true, vertical: "top" }),
+  );
+
+  // ─── Sheet 2b: Мұғалім өңдеген кері байланыс ─────────────────────────
+  const teacherEditsSheet = workbook.addWorksheet("Мұғалім өңдеген мәтін");
+  teacherEditsSheet.columns = [
+    { header: "Критерий", key: "name", width: 30 },
+    { header: "Балл (AI → мұғалім)", key: "score", width: 20 },
+    { header: "Дәйексөздер / байқаулар", key: "evidence", width: 60 },
+    { header: "Әлсіз тұстары", key: "problem", width: 60 },
+    { header: "Ұсыныстар / түзетулер", key: "rec", width: 60 },
+  ];
+  teacherEditsSheet.getRow(1).font = { bold: true };
+  for (const rubric of RUBRIC) {
+    const db = (criteriaDb as Array<{
+      criterion_code: string;
+      ai_score?: number | string;
+      teacher_score?: number | string | null;
+      evidence?: string | null;
+      problem?: string | null;
+      recommendation?: string | null;
+    }>).find((c) => c.criterion_code === rubric.code);
+    teacherEditsSheet.addRow({
+      name: cleanText(rubric.name),
+      score: `${db?.ai_score ?? 0} → ${db?.teacher_score ?? "—"}`,
+      evidence: cleanText(db?.evidence),
+      problem: cleanText(db?.problem),
+      rec: cleanText(db?.recommendation),
+    });
+  }
+  teacherEditsSheet.eachRow(
     (row) => (row.alignment = { wrapText: true, vertical: "top" }),
   );
 
@@ -293,11 +345,11 @@ export async function POST(req: Request, { params }: RouteParams) {
       commentsSheet.addRow({
         criterion: rubric.shortName,
         n: i + 1,
-        title: c.title,
-        obs: c.observation,
-        evidence: c.evidence_from_text,
-        analysis: c.analysis,
-        suggestion: c.improvement_suggestion,
+        title: cleanText(c.title),
+        obs: cleanText(c.observation),
+        evidence: cleanText(c.evidence_from_text),
+        analysis: cleanText(c.analysis),
+        suggestion: cleanText(c.improvement_suggestion),
       });
     });
   }
@@ -318,7 +370,7 @@ export async function POST(req: Request, { params }: RouteParams) {
   sectionsSheet.getRow(1).font = { bold: true };
   for (const s of sectionAnalysis) {
     sectionsSheet.addRow({
-      section: SECTION_LABELS[s.section] ?? s.section_name,
+      section: cleanText(SECTION_LABELS[s.section] ?? s.section_name),
       presence:
         s.presence === "complete"
           ? "Толық"
@@ -326,9 +378,13 @@ export async function POST(req: Request, { params }: RouteParams) {
             ? "Жартылай"
             : "Жоқ",
       words: s.word_count_estimate,
-      obs: (s.key_observations ?? []).map((o) => `• ${o}`).join("\n"),
-      issues: (s.issues ?? []).map((o) => `• ${o}`).join("\n"),
-      recs: (s.recommendations ?? []).map((o) => `• ${o}`).join("\n"),
+      obs: cleanText(
+        (s.key_observations ?? []).map((o) => `• ${o}`).join("\n"),
+      ),
+      issues: cleanText((s.issues ?? []).map((o) => `• ${o}`).join("\n")),
+      recs: cleanText(
+        (s.recommendations ?? []).map((o) => `• ${o}`).join("\n"),
+      ),
     });
   }
   sectionsSheet.eachRow(
@@ -351,9 +407,9 @@ export async function POST(req: Request, { params }: RouteParams) {
     ) => {
       interviewSheet.addRow({
         n: idx + 1,
-        question: q.question,
-        purpose: q.purpose ?? "",
-        section: q.risk_area ?? "",
+        question: cleanText(q.question),
+        purpose: cleanText(q.purpose),
+        section: cleanText(q.risk_area),
       });
     },
   );
@@ -424,6 +480,14 @@ async function handleLrfExport({
     bm3_score: number | string;
     total_ai_score: number | string;
     raw_json: unknown;
+    criterion_results?: Array<{
+      criterion_code: string;
+      ai_score?: number | string;
+      teacher_score?: number | string | null;
+      evidence?: string | null;
+      problem?: string | null;
+      recommendation?: string | null;
+    }>;
   };
   type FinalRow = {
     final_total_score: number | string | null;
@@ -484,42 +548,42 @@ async function handleLrfExport({
     const comments: string[] = [];
 
     // 1. Band explanation — opens the BM section with positioning rationale.
-    if (c.band_match_explanation && c.band_match_explanation.trim()) {
-      comments.push(c.band_match_explanation.trim());
-    }
+    const bandExpl = cleanText(c.band_match_explanation);
+    if (bandExpl) comments.push(bandExpl);
 
     // 2. All detailed comments — combine observation + textual evidence +
     //    analytical commentary + actionable suggestion into one rich
     //    paragraph per comment. Filter out the "no evidence found" boilerplate.
     for (const dc of c.detailed_comments?.slice(0, maxDetailed) ?? []) {
-      const evidence = dc.evidence_from_text?.trim();
+      const evidence = cleanText(dc.evidence_from_text);
       const hasRealEvidence =
         !!evidence &&
         !/нақты\s+дәлел\s+табылмады/i.test(evidence) &&
         !/мәтінде\s+дәйексөз\s+жоқ/i.test(evidence);
 
       const parts = [
-        dc.observation?.trim(),
+        cleanText(dc.observation),
         hasRealEvidence ? evidence : null,
-        dc.analysis?.trim(),
-        dc.improvement_suggestion?.trim(),
+        cleanText(dc.analysis),
+        cleanText(dc.improvement_suggestion),
       ].filter((s): s is string => Boolean(s && s.length > 0));
 
       if (parts.length === 0) continue;
 
       const sentence = parts.join(" ").replace(/\s+/g, " ").trim();
-      comments.push(sentence);
+      if (sentence) comments.push(sentence);
     }
 
     // 3. Up to N standout strengths as closing positive notes.
     for (const s of (c.strengths ?? []).slice(0, appendStrengths)) {
-      const t = s?.trim();
+      const t = cleanText(s);
       if (t) comments.push(t);
     }
 
     // Fallback if everything was empty.
     if (comments.length === 0 && c.strengths?.length) {
-      comments.push(c.strengths.join(" "));
+      const joined = cleanText(c.strengths.join(" "));
+      if (joined) comments.push(joined);
     }
 
     return comments;
@@ -561,6 +625,28 @@ async function handleLrfExport({
     finalReview.final_bm3_score ?? aiReview?.bm3_score ?? 0,
   );
 
+  // Мұғалімнің әр критерий бойынша өңдеген мәтінін табатын хелпер.
+  // Бөлек parameter — `criterion_results` кестесінен оқиды.
+  const dbCriteria = (aiReview?.criterion_results ?? []) as Array<{
+    criterion_code: string;
+    evidence?: string | null;
+    problem?: string | null;
+    recommendation?: string | null;
+  }>;
+
+  function teacherEditedComments(code: string): string[] {
+    const dbRow = dbCriteria.find((c) => c.criterion_code === code);
+    if (!dbRow) return [];
+    const out: string[] = [];
+    const ev = cleanText(dbRow.evidence);
+    const pr = cleanText(dbRow.problem);
+    const rc = cleanText(dbRow.recommendation);
+    if (ev) out.push(`Мұғалімнің мәтіннен дәйексөздері: ${ev}`);
+    if (pr) out.push(`Мұғалімнің анықтаған әлсіз тұстары: ${pr}`);
+    if (rc) out.push(`Мұғалімнің ұсыныстары: ${rc}`);
+    return out;
+  }
+
   // Build rich AI-driven commentary per BM. Teacher's free-form notes are
   // appended as additional bullets rather than replacing the AI analysis —
   // this keeps the LRF substantive even when the teacher only added a brief
@@ -569,8 +655,10 @@ async function handleLrfExport({
     maxDetailed: 3,
     appendStrengths: 1,
   });
-  if (finalReview.strengths?.trim()) {
-    bm1Comments.push(finalReview.strengths.trim());
+  bm1Comments.push(...teacherEditedComments("BM1_KNOWLEDGE"));
+  const teacherStrengths = cleanText(finalReview.strengths);
+  if (teacherStrengths) {
+    bm1Comments.push(teacherStrengths);
   }
 
   // BM2 спрэдтеледі: жинақталған 20 балл, талдау + дәйектер.
@@ -596,30 +684,38 @@ async function handleLrfExport({
     bm2Comments.push(bm2EvidenceHeader);
     bm2Comments.push(...bm2EvidenceBullets);
   }
-  if (finalReview.final_comment?.trim()) {
-    bm2Comments.push(`Мұғалім қорытындысы: ${finalReview.final_comment.trim()}`);
+  // Мұғалімнің критерий ішіндегі өңдеулері
+  const bm2TeacherEdits = [
+    ...teacherEditedComments("BM2_ANALYSIS"),
+    ...teacherEditedComments("BM2_EVIDENCE"),
+  ];
+  if (bm2TeacherEdits.length > 0) {
+    bm2Comments.push(...bm2TeacherEdits);
   }
-  if (finalReview.needs_improvement?.trim()) {
-    bm2Comments.push(
-      `Жетілдіруге қажетті тұстар: ${finalReview.needs_improvement.trim()}`,
-    );
+  const teacherFinalComment = cleanText(finalReview.final_comment);
+  if (teacherFinalComment) {
+    bm2Comments.push(`Мұғалім қорытындысы: ${teacherFinalComment}`);
+  }
+  const teacherNeedsImprovement = cleanText(finalReview.needs_improvement);
+  if (teacherNeedsImprovement) {
+    bm2Comments.push(`Жетілдіруге қажетті тұстар: ${teacherNeedsImprovement}`);
   }
 
   const bm3Comments = buildRichCommentsForCriterion("BM3_COMMUNICATION", {
     maxDetailed: 3,
     appendStrengths: 1,
   });
-  if (finalReview.next_revision?.trim()) {
-    bm3Comments.push(
-      `Келесі редакцияда: ${finalReview.next_revision.trim()}`,
-    );
+  bm3Comments.push(...teacherEditedComments("BM3_COMMUNICATION"));
+  const teacherNextRevision = cleanText(finalReview.next_revision);
+  if (teacherNextRevision) {
+    bm3Comments.push(`Келесі редакцияда: ${teacherNextRevision}`);
   }
 
   const docBuffer = await buildLrfDocx({
-    student_full_name: submission.student_full_name,
+    student_full_name: cleanText(submission.student_full_name),
     candidate_number: "",
-    school_name: teacher.school_name ?? "",
-    subject_component: subjectComponent,
+    school_name: cleanText(teacher.school_name),
+    subject_component: cleanText(subjectComponent),
     exam_date: todayKz,
     total_score: totalFinal,
     total_max: TOTAL_MAX_SCORE,
@@ -631,7 +727,7 @@ async function handleLrfExport({
     bm3_comments: bm3Comments,
     references_count: referencesCount,
     references_comment: "Тақырыпқа сай дереккөздер қолданылған.",
-    teacher_full_name: teacherFullName,
+    teacher_full_name: cleanText(teacherFullName),
     teacher_signature_date: todayKz,
   });
 
