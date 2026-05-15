@@ -115,13 +115,21 @@ export function ReviewWorkspace({ submission, ai, criteria, finalReview }: Props
   );
   const liveBm3 = sumByBmCode((c) => c === "BM3_COMMUNICATION");
 
-  async function persistTeacherScore(row: CriterionRow, value: number | null) {
+  async function persistRow(
+    row: CriterionRow,
+    payload: {
+      teacher_score?: number | null;
+      evidence?: string | null;
+      problem?: string | null;
+      recommendation?: string | null;
+    },
+  ) {
     setSavingIds((s) => new Set(s).add(row.id));
     try {
       const res = await fetch(`/api/criterion-results/${row.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teacher_score: value }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as { error?: string };
@@ -152,7 +160,24 @@ export function ReviewWorkspace({ submission, ai, criteria, finalReview }: Props
   }
 
   function handleScoreBlur(row: CriterionRow) {
-    void persistTeacherScore(row, row.teacher_score);
+    void persistRow(row, { teacher_score: row.teacher_score });
+  }
+
+  function handleTextChange(
+    rowId: string,
+    field: "evidence" | "problem" | "recommendation",
+    value: string,
+  ) {
+    setRows((current) =>
+      current.map((r) => (r.id === rowId ? { ...r, [field]: value } : r)),
+    );
+  }
+
+  function handleTextBlur(
+    row: CriterionRow,
+    field: "evidence" | "problem" | "recommendation",
+  ) {
+    void persistRow(row, { [field]: row[field] ?? "" });
   }
 
   async function handleFinalize(commitFinal: boolean) {
@@ -284,7 +309,9 @@ export function ReviewWorkspace({ submission, ai, criteria, finalReview }: Props
               <CardTitle>Критерийлік балл</CardTitle>
               <CardDescription>
                 Ресми NIS рубрикасы: 4 критерий × 10 балл = 40 балл. Бос
-                қалдырсаңыз AI ұсынған балл қолданылады.
+                қалдырсаңыз ЖИ ұсынған балл қолданылады. ЖИ дайындаған
+                мәтіндерді (дәйексөз / әлсіз тұс / ұсыныс) өз сөзіңізбен
+                өңдеп жазсаңыз болады — өзгертулер автоматты сақталады.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -335,40 +362,38 @@ export function ReviewWorkspace({ submission, ai, criteria, finalReview }: Props
                         )}
                       </div>
                     </div>
-                    {(row.evidence || row.problem || row.recommendation) && (
-                      <div className="mt-3 space-y-2 text-xs text-muted-foreground">
-                        {row.evidence && (
-                          <div>
-                            <p className="font-medium text-foreground">
-                              Мәтіннен дәйексөздер:
-                            </p>
-                            <p className="mt-0.5 whitespace-pre-wrap">
-                              {row.evidence}
-                            </p>
-                          </div>
-                        )}
-                        {row.problem && (
-                          <div>
-                            <p className="font-medium text-foreground">
-                              Әлсіз тұстары:
-                            </p>
-                            <p className="mt-0.5 whitespace-pre-wrap">
-                              {row.problem}
-                            </p>
-                          </div>
-                        )}
-                        {row.recommendation && (
-                          <div>
-                            <p className="font-medium text-foreground">
-                              Ұсыныстар:
-                            </p>
-                            <p className="mt-0.5 whitespace-pre-wrap">
-                              {row.recommendation}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    <div className="mt-3 space-y-3 text-xs">
+                      <EditableAiText
+                        label="Мәтіннен дәйексөздер (ЖИ ұсынысы)"
+                        value={row.evidence ?? ""}
+                        rows={4}
+                        onChange={(v) =>
+                          handleTextChange(row.id, "evidence", v)
+                        }
+                        onBlur={() => handleTextBlur(row, "evidence")}
+                        placeholder="Жұмыс мәтінінен дәйексөз. Қажет болса өңдеңіз..."
+                      />
+                      <EditableAiText
+                        label="Әлсіз тұстары (ЖИ ұсынысы)"
+                        value={row.problem ?? ""}
+                        rows={3}
+                        onChange={(v) =>
+                          handleTextChange(row.id, "problem", v)
+                        }
+                        onBlur={() => handleTextBlur(row, "problem")}
+                        placeholder="Кемшіліктер тізімі..."
+                      />
+                      <EditableAiText
+                        label="Ұсыныстар (ЖИ нұсқасы)"
+                        value={row.recommendation ?? ""}
+                        rows={3}
+                        onChange={(v) =>
+                          handleTextChange(row.id, "recommendation", v)
+                        }
+                        onBlur={() => handleTextBlur(row, "recommendation")}
+                        placeholder="Нақты түзету қадамдары..."
+                      />
+                    </div>
                   </div>
                 );
               })}
@@ -430,6 +455,36 @@ export function ReviewWorkspace({ submission, ai, criteria, finalReview }: Props
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function EditableAiText({
+  label,
+  value,
+  rows,
+  placeholder,
+  onChange,
+  onBlur,
+}: {
+  label: string;
+  value: string;
+  rows: number;
+  placeholder?: string;
+  onChange: (value: string) => void;
+  onBlur: () => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Textarea
+        rows={rows}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+        placeholder={placeholder}
+        className="text-xs leading-relaxed"
+      />
     </div>
   );
 }

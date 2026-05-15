@@ -6,9 +6,23 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-const bodySchema = z.object({
-  teacher_score: z.number().min(0).max(40).nullable(),
-});
+const bodySchema = z
+  .object({
+    teacher_score: z.number().min(0).max(40).nullable().optional(),
+    evidence: z.string().max(5000).nullable().optional(),
+    problem: z.string().max(5000).nullable().optional(),
+    recommendation: z.string().max(5000).nullable().optional(),
+  })
+  .refine(
+    (v) =>
+      v.teacher_score !== undefined ||
+      v.evidence !== undefined ||
+      v.problem !== undefined ||
+      v.recommendation !== undefined,
+    {
+      message: "Кемінде бір өрісті жіберіңіз",
+    },
+  );
 
 export async function PATCH(req: Request, { params }: RouteParams) {
   const { id } = await params;
@@ -38,7 +52,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
   }
 
   if (
-    parsed.data.teacher_score !== null &&
+    parsed.data.teacher_score != null &&
     parsed.data.teacher_score > Number(existing.max_score)
   ) {
     return NextResponse.json(
@@ -47,9 +61,23 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     );
   }
 
+  const updatePayload: Record<string, unknown> = {};
+  if (parsed.data.teacher_score !== undefined) {
+    updatePayload.teacher_score = parsed.data.teacher_score;
+  }
+  if (parsed.data.evidence !== undefined) {
+    updatePayload.evidence = parsed.data.evidence;
+  }
+  if (parsed.data.problem !== undefined) {
+    updatePayload.problem = parsed.data.problem;
+  }
+  if (parsed.data.recommendation !== undefined) {
+    updatePayload.recommendation = parsed.data.recommendation;
+  }
+
   const { error: updateErr } = await supabase
     .from("criterion_results")
-    .update({ teacher_score: parsed.data.teacher_score })
+    .update(updatePayload)
     .eq("id", id);
   if (updateErr) {
     return NextResponse.json({ error: updateErr.message }, { status: 500 });
