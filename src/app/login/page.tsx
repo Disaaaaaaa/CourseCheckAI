@@ -35,7 +35,10 @@ export default async function LoginPage({ searchParams }: PageProps) {
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
-          Платформа тек мұғалімдерге арналған. Соңғы шешімді мұғалім бекітеді.
+          Платформа тек мұғалімдерге арналған.
+        </p>
+        <p className="text-center text-lg font-bold uppercase tracking-wide text-red-600">
+          Соңғы шешімді мұғалім бекітеді.
         </p>
       </div>
     </div>
