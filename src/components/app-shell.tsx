@@ -76,7 +76,7 @@ export function AppShell({ user, children }: AppShellProps) {
           })}
         </nav>
         <div className="border-t p-3">
-          <p className="text-base font-bold uppercase tracking-wide text-red-600 leading-tight">
+          <p className="text-base font-bold text-red-600 leading-tight">
             Соңғы шешімді мұғалім бекітеді.
           </p>
         </div>
