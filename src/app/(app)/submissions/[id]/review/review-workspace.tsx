@@ -268,13 +268,13 @@ export function ReviewWorkspace({ submission, ai, criteria, finalReview }: Props
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-5">
-        <div className="lg:col-span-2 space-y-4">
-          <Card className="h-[calc(100vh-12rem)] overflow-hidden">
+      <div className="grid items-start gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-2 lg:sticky lg:top-20 lg:self-start">
+          <Card className="flex h-[calc(100vh-6rem)] flex-col overflow-hidden">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">PDF алдын ала қарау</CardTitle>
             </CardHeader>
-            <CardContent className="h-full pt-0">
+            <CardContent className="flex-1 min-h-0 pt-0 pb-3">
               {pdfError && (
                 <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
                   {pdfError}
@@ -285,7 +285,7 @@ export function ReviewWorkspace({ submission, ai, criteria, finalReview }: Props
                   <iframe
                     title="PDF"
                     src={pdfUrl}
-                    className="h-[calc(100vh-15rem)] w-full rounded-md border bg-muted"
+                    className="h-full w-full rounded-md border bg-muted"
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
