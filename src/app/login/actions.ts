@@ -4,6 +4,12 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+/** FormData өрісі null/File болса бос жолға айналдырамыз — Zod string күтеді. */
+function str(form: FormData, key: string): string {
+  const v = form.get(key);
+  return typeof v === "string" ? v : "";
+}
+
 const loginSchema = z.object({
   email: z.string().email("Email қате форматта"),
   password: z.string().min(6, "Кемінде 6 таңба"),
@@ -21,9 +27,9 @@ export async function loginAction(
   formData: FormData,
 ): Promise<LoginState> {
   const parsed = loginSchema.safeParse({
-    email: formData.get("email"),
-    password: formData.get("password"),
-    next: formData.get("next"),
+    email: str(formData, "email"),
+    password: str(formData, "password"),
+    next: str(formData, "next") || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Қате толтыру" };
@@ -38,7 +44,11 @@ export async function loginAction(
     return { error: "Email немесе құпиясөз дұрыс емес." };
   }
 
-  redirect(parsed.data.next && parsed.data.next.startsWith("/") ? parsed.data.next : "/dashboard");
+  redirect(
+    parsed.data.next && parsed.data.next.startsWith("/")
+      ? parsed.data.next
+      : "/dashboard",
+  );
 }
 
 export async function signupAction(
@@ -46,10 +56,10 @@ export async function signupAction(
   formData: FormData,
 ): Promise<LoginState> {
   const parsed = signupSchema.safeParse({
-    email: formData.get("email"),
-    password: formData.get("password"),
-    fullName: formData.get("fullName"),
-    next: formData.get("next"),
+    email: str(formData, "email"),
+    password: str(formData, "password"),
+    fullName: str(formData, "fullName"),
+    next: str(formData, "next") || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Қате толтыру" };

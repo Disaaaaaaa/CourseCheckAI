@@ -37,10 +37,14 @@ export async function POST(req: Request) {
   }
 
   const form = await req.formData();
+  const str = (key: string) => {
+    const v = form.get(key);
+    return typeof v === "string" ? v : "";
+  };
   const meta = metaSchema.safeParse({
-    student_full_name: form.get("student_full_name"),
-    class_name: form.get("class_name"),
-    coursework_title: form.get("coursework_title"),
+    student_full_name: str("student_full_name"),
+    class_name: str("class_name"),
+    coursework_title: str("coursework_title"),
   });
   if (!meta.success) {
     return NextResponse.json(
