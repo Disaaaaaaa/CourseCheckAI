@@ -13,7 +13,7 @@ import {
   type RubricSection,
 } from "@/lib/rubric";
 import { firstOf, formatDate } from "@/lib/utils";
-import { buildLrfDocx } from "@/lib/exports/lrf";
+import { buildLrfDocx, LRF_SECTION_PREFIX } from "@/lib/exports/lrf";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -474,27 +474,50 @@ async function handleLrfExport({
     }>;
   } | null;
 
-  function buildCommentsForCriterion(code: string): string[] {
+  function buildRichCommentsForCriterion(
+    code: string,
+    opts: { maxDetailed?: number; appendStrengths?: number } = {},
+  ): string[] {
     const c = raw?.criteria?.find((x) => x.criterion_code === code);
     if (!c) return [];
+    const { maxDetailed = 3, appendStrengths = 1 } = opts;
     const comments: string[] = [];
 
-    // Prefer band_match_explanation as the opening sentence
+    // 1. Band explanation — opens the BM section with positioning rationale.
     if (c.band_match_explanation && c.band_match_explanation.trim()) {
       comments.push(c.band_match_explanation.trim());
     }
 
-    // Then 1–2 detailed comments synthesized in LRF style
-    for (const dc of c.detailed_comments?.slice(0, 2) ?? []) {
-      const sentence = [dc.observation, dc.analysis]
-        .filter(Boolean)
-        .join(" ")
-        .replace(/\s+/g, " ")
-        .trim();
-      if (sentence) comments.push(sentence);
+    // 2. All detailed comments — combine observation + textual evidence +
+    //    analytical commentary + actionable suggestion into one rich
+    //    paragraph per comment. Filter out the "no evidence found" boilerplate.
+    for (const dc of c.detailed_comments?.slice(0, maxDetailed) ?? []) {
+      const evidence = dc.evidence_from_text?.trim();
+      const hasRealEvidence =
+        !!evidence &&
+        !/нақты\s+дәлел\s+табылмады/i.test(evidence) &&
+        !/мәтінде\s+дәйексөз\s+жоқ/i.test(evidence);
+
+      const parts = [
+        dc.observation?.trim(),
+        hasRealEvidence ? evidence : null,
+        dc.analysis?.trim(),
+        dc.improvement_suggestion?.trim(),
+      ].filter((s): s is string => Boolean(s && s.length > 0));
+
+      if (parts.length === 0) continue;
+
+      const sentence = parts.join(" ").replace(/\s+/g, " ").trim();
+      comments.push(sentence);
     }
 
-    // If we still have no comments, fall back to strengths
+    // 3. Up to N standout strengths as closing positive notes.
+    for (const s of (c.strengths ?? []).slice(0, appendStrengths)) {
+      const t = s?.trim();
+      if (t) comments.push(t);
+    }
+
+    // Fallback if everything was empty.
     if (comments.length === 0 && c.strengths?.length) {
       comments.push(c.strengths.join(" "));
     }
@@ -538,19 +561,59 @@ async function handleLrfExport({
     finalReview.final_bm3_score ?? aiReview?.bm3_score ?? 0,
   );
 
-  // Teacher's own narrative overrides AI comments when present.
-  const bm1Comments = finalReview.strengths
-    ? [finalReview.strengths]
-    : buildCommentsForCriterion("BM1_KNOWLEDGE");
-  const bm2Comments = finalReview.final_comment
-    ? [finalReview.final_comment]
-    : [
-        ...buildCommentsForCriterion("BM2_ANALYSIS"),
-        ...buildCommentsForCriterion("BM2_EVIDENCE"),
-      ];
-  const bm3Comments = finalReview.next_revision
-    ? [finalReview.next_revision]
-    : buildCommentsForCriterion("BM3_COMMUNICATION");
+  // Build rich AI-driven commentary per BM. Teacher's free-form notes are
+  // appended as additional bullets rather than replacing the AI analysis —
+  // this keeps the LRF substantive even when the teacher only added a brief
+  // closing remark.
+  const bm1Comments = buildRichCommentsForCriterion("BM1_KNOWLEDGE", {
+    maxDetailed: 3,
+    appendStrengths: 1,
+  });
+  if (finalReview.strengths?.trim()) {
+    bm1Comments.push(finalReview.strengths.trim());
+  }
+
+  // BM2 спрэдтеледі: жинақталған 20 балл, талдау + дәйектер.
+  // Әр субкритерийдің TOLЫҚ детальді талдауын қосамыз → ауқымды кері байланыс.
+  const bm2AnalysisHeader = `${LRF_SECTION_PREFIX}Қолдану, талдау, бағалау, синтез (БМ2.1, 10 балл):`;
+  const bm2EvidenceHeader = `${LRF_SECTION_PREFIX}Дәйектер мен зерттеу материалдарын тиімді пайдалану (БМ2.2, 10 балл):`;
+
+  const bm2AnalysisBullets = buildRichCommentsForCriterion("BM2_ANALYSIS", {
+    maxDetailed: 3,
+    appendStrengths: 2,
+  });
+  const bm2EvidenceBullets = buildRichCommentsForCriterion("BM2_EVIDENCE", {
+    maxDetailed: 3,
+    appendStrengths: 2,
+  });
+
+  const bm2Comments: string[] = [];
+  if (bm2AnalysisBullets.length > 0) {
+    bm2Comments.push(bm2AnalysisHeader);
+    bm2Comments.push(...bm2AnalysisBullets);
+  }
+  if (bm2EvidenceBullets.length > 0) {
+    bm2Comments.push(bm2EvidenceHeader);
+    bm2Comments.push(...bm2EvidenceBullets);
+  }
+  if (finalReview.final_comment?.trim()) {
+    bm2Comments.push(`Мұғалім қорытындысы: ${finalReview.final_comment.trim()}`);
+  }
+  if (finalReview.needs_improvement?.trim()) {
+    bm2Comments.push(
+      `Жетілдіруге қажетті тұстар: ${finalReview.needs_improvement.trim()}`,
+    );
+  }
+
+  const bm3Comments = buildRichCommentsForCriterion("BM3_COMMUNICATION", {
+    maxDetailed: 3,
+    appendStrengths: 1,
+  });
+  if (finalReview.next_revision?.trim()) {
+    bm3Comments.push(
+      `Келесі редакцияда: ${finalReview.next_revision.trim()}`,
+    );
+  }
 
   const docBuffer = await buildLrfDocx({
     student_full_name: submission.student_full_name,

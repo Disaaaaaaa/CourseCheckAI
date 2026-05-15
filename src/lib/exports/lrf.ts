@@ -83,6 +83,42 @@ function bulletPara(text: string) {
   });
 }
 
+/**
+ * Subsection header inside a BM block — used for splitting BM2 into its two
+ * sub-criteria (analysis vs evidence). Renders as bold italic, no bullet.
+ * Caller prefixes such lines with the SECTION_PREFIX sentinel.
+ */
+const SECTION_PREFIX = "##SEC## ";
+function isSectionHeader(text: string): boolean {
+  return text.startsWith(SECTION_PREFIX);
+}
+function stripSectionPrefix(text: string): string {
+  return text.slice(SECTION_PREFIX.length);
+}
+function subsectionPara(text: string) {
+  return new Paragraph({
+    spacing: { before: 120, after: 60, line: 280 },
+    children: [
+      new TextRun({
+        text,
+        font: FONT,
+        size: 22,
+        bold: true,
+        italics: true,
+      }),
+    ],
+  });
+}
+
+function commentLine(text: string) {
+  if (isSectionHeader(text)) {
+    return subsectionPara(stripSectionPrefix(text));
+  }
+  return bulletPara(text);
+}
+
+export const LRF_SECTION_PREFIX = SECTION_PREFIX;
+
 function emptySpacer() {
   return new Paragraph({ children: [new TextRun({ text: "" })] });
 }
@@ -139,17 +175,17 @@ export async function buildLrfDocx(input: LrfInput): Promise<Buffer> {
 
   children.push(bmHeader(`БМ1 — ${input.bm1_score} балл`));
   for (const c of input.bm1_comments) {
-    if (c.trim()) children.push(bulletPara(c.trim()));
+    if (c.trim()) children.push(commentLine(c.trim()));
   }
 
   children.push(bmHeader(`БМ2 — ${input.bm2_score} балл`));
   for (const c of input.bm2_comments) {
-    if (c.trim()) children.push(bulletPara(c.trim()));
+    if (c.trim()) children.push(commentLine(c.trim()));
   }
 
   children.push(bmHeader(`БМ3 — ${input.bm3_score} балл`));
   for (const c of input.bm3_comments) {
-    if (c.trim()) children.push(bulletPara(c.trim()));
+    if (c.trim()) children.push(commentLine(c.trim()));
   }
   if (input.references_count != null || input.references_comment) {
     const refText = [
