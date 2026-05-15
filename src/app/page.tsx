@@ -57,7 +57,7 @@ export default async function HomePage() {
             </span>
             <h1 className="text-4xl font-bold tracking-tight md:text-5xl">
               Курстық жұмыстарды AI көмегімен{" "}
-              <span className="text-primary">10 секундта</span> тексеру
+              <span className="text-primary">жылдам</span> тексеру
             </h1>
             <p className="text-lg leading-relaxed text-muted-foreground">
               <strong className="text-foreground">CourseWorkCheck</strong> —
@@ -115,7 +115,7 @@ export default async function HomePage() {
 
             <div className="mt-6 grid grid-cols-3 gap-2 rounded-lg bg-muted/50 p-3 text-center text-xs">
               <div>
-                <p className="font-semibold text-foreground">~10 сек</p>
+                <p className="font-semibold text-foreground">Жылдам</p>
                 <p className="text-muted-foreground">AI талдау</p>
               </div>
               <div>
@@ -175,7 +175,7 @@ export default async function HomePage() {
             <Feature
               icon={<Upload className="h-5 w-5" />}
               title="3. PDF жүктеу + AI талдау"
-              text="Курстық жұмысты PDF форматында жүктейсіз — жүйе ~10 секундта талдап, әр бөлім бойынша кері байланыс, күшті/әлсіз тұстар, түзету ұсыныстары мен 40 балдық шкала бойынша балл жобасын ұсынады."
+              text="Курстық жұмысты PDF форматында жүктейсіз — жүйе жылдам талдап, әр бөлім бойынша кері байланыс, күшті/әлсіз тұстар, түзету ұсыныстары мен 40 балдық шкала бойынша балл жобасын ұсынады."
             />
             <Feature
               icon={<PencilLine className="h-5 w-5" />}
@@ -205,7 +205,7 @@ export default async function HomePage() {
           </h2>
           <ol className="mt-6 grid gap-4 md:grid-cols-4">
             <Step n={1} title="PDF жүктеу" text="Оқушы аты + сынып + тақырып + PDF файлы" />
-            <Step n={2} title="AI талдау" text="~10 секундта 40 балдық рубрика бойынша" />
+            <Step n={2} title="AI талдау" text="Жылдам, 40 балдық рубрика бойынша" />
             <Step n={3} title="Балл бекіту" text="Мұғалім баллды нақтылап, бекітеді" />
             <Step n={4} title="ОЖТФ жүктеу" text="Word формасы автоматты толтырылған" />
           </ol>

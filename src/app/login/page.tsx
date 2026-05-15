@@ -45,7 +45,7 @@ export default async function LoginPage({ searchParams }: PageProps) {
             </div>
 
             <h2 className="mt-8 text-3xl font-bold tracking-tight">
-              Курстық жұмысты <span className="text-primary">10 секундта</span>
+              Курстық жұмысты <span className="text-primary">жылдам</span>
               <br />
               AI көмегімен тексеру
             </h2>
@@ -69,7 +69,7 @@ export default async function LoginPage({ searchParams }: PageProps) {
               <Feature
                 icon={<Upload className="h-4 w-4" />}
                 title="PDF талдау"
-                text="~10 секундта 40 балдық рубрика бойынша балл + кері байланыс"
+                text="Жылдам, 40 балдық рубрика бойынша балл + кері байланыс"
               />
               <Feature
                 icon={<PencilLine className="h-4 w-4" />}
