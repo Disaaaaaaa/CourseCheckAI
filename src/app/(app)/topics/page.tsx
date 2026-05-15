@@ -8,7 +8,7 @@ import {
 import { TopicsWorkspace } from "./topics-workspace";
 
 export const metadata = {
-  title: "Тақырып таңдау · CourseCheck AI",
+  title: "Тақырып таңдау · CourseWorkCheck",
 };
 
 export default function TopicsPage() {

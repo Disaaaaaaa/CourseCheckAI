@@ -4,7 +4,7 @@ import { Toaster } from "sonner";
 import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
-  title: "CourseCheck AI",
+  title: "CourseWorkCheck",
   description:
     "12-сынып Қазақстан тарихы курстық жұмыстарын AI көмегімен тексеру платформасы",
 };

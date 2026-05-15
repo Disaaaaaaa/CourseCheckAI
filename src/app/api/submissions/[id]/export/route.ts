@@ -161,7 +161,7 @@ export async function POST(req: Request, { params }: RouteParams) {
   const sectionAnalysis = raw?.section_analysis ?? [];
 
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "CourseCheck AI";
+  workbook.creator = "CourseWorkCheck";
 
   // ─── Sheet 1: Қорытынды ───────────────────────────────────────────────
   const summary = workbook.addWorksheet("Қорытынды");
@@ -385,7 +385,7 @@ export async function POST(req: Request, { params }: RouteParams) {
   const safeTitle = submission.coursework_title
     .replace(/[^\p{L}\p{N}_\- ]+/gu, "")
     .slice(0, 50);
-  const fileName = `coursecheck_${safeTitle || submission.id.slice(0, 8)}.xlsx`;
+  const fileName = `courseworkcheck_${safeTitle || submission.id.slice(0, 8)}.xlsx`;
 
   void RUBRIC_BY_CODE;
 

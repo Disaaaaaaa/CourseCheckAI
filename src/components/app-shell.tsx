@@ -48,7 +48,7 @@ export function AppShell({ user, children }: AppShellProps) {
             <GraduationCap className="h-5 w-5" />
           </span>
           <div className="leading-tight">
-            <p className="text-sm font-semibold">CourseCheck AI</p>
+            <p className="text-sm font-semibold">CourseWorkCheck</p>
             <p className="text-xs text-muted-foreground">12-сынып · Тарих</p>
           </div>
         </div>
@@ -84,13 +84,13 @@ export function AppShell({ user, children }: AppShellProps) {
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b bg-background/95 px-4 backdrop-blur md:px-8">
           <div className="md:hidden flex items-center gap-2 font-semibold">
             <GraduationCap className="h-5 w-5 text-primary" />
-            CourseCheck AI
+            CourseWorkCheck
           </div>
           <div className="hidden md:block text-sm text-muted-foreground">
             {NAV.find((i) =>
               i.href === pathname ||
               (i.href !== "/dashboard" && pathname.startsWith(i.href)),
-            )?.label ?? "CourseCheck AI"}
+            )?.label ?? "CourseWorkCheck"}
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

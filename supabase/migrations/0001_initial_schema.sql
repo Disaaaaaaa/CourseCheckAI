@@ -1,4 +1,4 @@
--- CourseCheck AI — initial schema
+-- CourseWorkCheck — initial schema
 -- Apply via: Supabase Dashboard → SQL Editor, or `supabase db push`
 
 create extension if not exists "pgcrypto";

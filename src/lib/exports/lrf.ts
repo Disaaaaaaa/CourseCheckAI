@@ -176,7 +176,7 @@ export async function buildLrfDocx(input: LrfInput): Promise<Buffer> {
   children.push(fieldLabel("Күні"));
 
   const doc = new Document({
-    creator: "CourseCheck AI",
+    creator: "CourseWorkCheck",
     title: `ОЖТФ — ${input.student_full_name}`,
     styles: {
       default: {

@@ -145,7 +145,7 @@ export function ReportView({
       const match = cd.match(/filename="?([^";]+)"?/i);
       const fileName = match
         ? decodeURIComponent(match[1])
-        : `coursecheck_${submission.id.slice(0, 8)}.${
+        : `courseworkcheck_${submission.id.slice(0, 8)}.${
             type === "excel" ? "xlsx" : "docx"
           }`;
       const url = URL.createObjectURL(blob);
@@ -202,7 +202,7 @@ export function ReportView({
       <article className="rounded-xl border bg-card p-8 shadow-sm print:border-0 print:shadow-none print:bg-white print:p-0">
         <header className="border-b pb-4">
           <p className="text-xs uppercase tracking-widest text-muted-foreground">
-            CourseCheck AI · NIS 12-сынып · Бағалау есебі
+            CourseWorkCheck · NIS 12-сынып · Бағалау есебі
           </p>
           <h1 className="mt-2 text-2xl font-semibold">
             {submission.coursework_title}

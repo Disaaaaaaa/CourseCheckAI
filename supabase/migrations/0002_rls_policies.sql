@@ -1,4 +1,4 @@
--- CourseCheck AI — Row Level Security
+-- CourseWorkCheck — Row Level Security
 -- Each teacher can only access their own data.
 
 -- helper: get teacher.id for the current auth user

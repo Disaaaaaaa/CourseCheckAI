@@ -1,4 +1,4 @@
--- CourseCheck AI — Storage bucket + RLS
+-- CourseWorkCheck — Storage bucket + RLS
 -- Bucket layout: <teacher_id>/<submission_id>/original.pdf, report.pdf, report.xlsx
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
