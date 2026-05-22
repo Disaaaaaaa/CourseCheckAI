@@ -2,30 +2,43 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ─── NIS Green-Gold palette (light mode only) ───────────────────
+   Primary  — NIS жасылы (#16744B)
+   Accent   — Алтын акцент (CTA + badge үшін ғана)
+   Background — Жылы крем-ак (қағаз сезімі)
+*/
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222 47% 11%;
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
+  --background: 48 33% 98%;          /* жылы крем-ақ */
+  --foreground: 158 30% 12%;         /* терең қарашек жасыл-қара */
+  --card: 0 0% 100%;                 /* таза ақ — карточкалар фонда айырылып тұрсын */
+  --card-foreground: 158 30% 12%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --primary: 221 83% 53%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96%;
-  --secondary-foreground: 222 47% 11%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 47%;
-  --accent: 210 40% 96%;
-  --accent-foreground: 222 47% 11%;
-  --destructive: 0 72% 51%;
-  --destructive-foreground: 210 40% 98%;
-  --success: 142 71% 45%;
-  --success-foreground: 0 0% 100%;
-  --warning: 38 92% 50%;
-  --warning-foreground: 0 0% 100%;
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
-  --ring: 221 83% 53%;
+  --popover-foreground: 158 30% 12%;
+
+  --primary: 158 64% 32%;            /* NIS жасылы (#16744B) */
+  --primary-foreground: 48 33% 98%;  /* крем-ақ */
+
+  --secondary: 48 22% 93%;           /* жылы беж — карточка ішкі блогы */
+  --secondary-foreground: 158 30% 18%;
+
+  --muted: 48 20% 95%;               /* шай-крем */
+  --muted-foreground: 158 12% 38%;   /* муфталған жасыл-сұр мәтін */
+
+  --accent: 45 100% 51%;             /* алтын акцент (#FFC600) — CTA, badge */
+  --accent-foreground: 158 50% 12%;  /* алтын фонда қара мәтін */
+
+  --destructive: 0 75% 45%;          /* қызыл-күрең */
+  --destructive-foreground: 48 33% 98%;
+
+  --success: 158 64% 38%;            /* бір тонмен жасыл */
+  --success-foreground: 48 33% 98%;
+
+  --warning: 38 92% 48%;             /* қызғылт-сары */
+  --warning-foreground: 158 50% 12%;
+
+  --border: 48 18% 86%;              /* жылы беж шек */
+  --input: 48 18% 86%;
+  --ring: 158 64% 32%;               /* фокус — primary тонында */
   --radius: 0.5rem;
 }
 

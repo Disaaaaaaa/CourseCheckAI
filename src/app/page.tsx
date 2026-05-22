@@ -96,19 +96,19 @@ export default async function HomePage() {
               <BmRow
                 label="БМ1 — Білу және түсіну"
                 score={10}
-                color="bg-blue-500"
+                color="bg-primary"
                 widthPct={25}
               />
               <BmRow
                 label="БМ2 — Талдау және бағалау"
                 score={20}
-                color="bg-violet-500"
+                color="bg-accent"
                 widthPct={50}
               />
               <BmRow
                 label="БМ3 — Коммуникация"
                 score={10}
-                color="bg-emerald-500"
+                color="bg-success"
                 widthPct={25}
               />
             </div>
